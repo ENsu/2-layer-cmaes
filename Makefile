@@ -2,11 +2,12 @@ CC = g++
 
 # Flags for -c compilation and linking
 FLAG = -c -g -I/usr/include -I/usr/local/include
-LFLAGS = -L/usr/lib64 -lgsl -lgslcblas -lm
+LFLAGS = -lgsl -lgslcblas -lm 
+# -L/usr/lib64 
 CXXFLAGS = -O2 -Wall -march=native
 
 OBJS  = main.o \
-	random.o benchmark.o node.o\
+	random.o benchmark.o \
         F01_shifted_sphere.o \
         F02_shifted_schwefel.o \
         F03_shifted_rotated_high_cond_elliptic.o \

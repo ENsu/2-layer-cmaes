@@ -3,7 +3,7 @@
 #include <iostream>
 #include <cctype>
 #include <cstdlib>
-#include <node.h>
+#include "node.h"
 
 using namespace std;
 
@@ -37,7 +37,7 @@ int main( int argc, char *argv[] )
 	double result = testFunc->f(tmp , 1);
 	cout << result << endl;
 
-	Node node
+	Node node;
 	// run the ECGA algorithm
 //	cout << "ECGA done" << endl;
 //	cout << "Evaluated functions:" << parameter::eva_fun << endl;
