@@ -1,30 +1,27 @@
 #include "group.h"
+#include "global.h"
 #include <assert.h>
 #include <cfloat>
 
-
-GROUP::GROUP(int new_gid, int dimension, list<Node> new_Nodes)
+Group::Group(list<Node> new_Nodes)
 {
-    gID = new_gid;
-    dim = dimension;
+    Nodes.clear();
     Nodes = new_Nodes;
     AllNodeNum = Nodes.size();
 }
 
-GROUP::GROUP(int new_gid, int dimension)
+Group::Group()
 {
-    gID = new_gid;
-    dim = dimension;
     Nodes.clear();
     AllNodeNum = 0 ;
 }
 
-GROUP::~GROUP()
+Group::~Group()
 {
     Nodes.clear();
 }
 
-double GROUP::getMin()
+double Group::getMin()
 {
     double tmpMin = DBL_MAX;
     list<Node>::iterator iter;
@@ -34,7 +31,7 @@ double GROUP::getMin()
     return tmpMin;
 }
 
-double GROUP::getMax()
+double Group::getMax()
 {
     double tmpMax = -1* DBL_MAX;
     list<Node>::iterator iter;
@@ -44,7 +41,7 @@ double GROUP::getMax()
     return tmpMax;
 }
 
-double GROUP::getMean()
+double Group::getMean()
 {
     double tmpSum = 0;
     list<Node>::iterator iter;
@@ -53,8 +50,10 @@ double GROUP::getMean()
     return (tmpSum / Nodes.size());
 }
 
-double GROUP::getMean(double *weight)
+double Group::getMean(double *weight, int weight_length)
 {
+    assert(weight_length == Nodes.size());
+    // make sure weight and Nodes have same size
     double Sum = 0;
     double weightSum = 0;
 
@@ -66,11 +65,12 @@ double GROUP::getMean(double *weight)
         weightSum += weight[index];
         index++;
     }
-    return (Sum / weightSum);
+    assert(weightSum == 1);
+    return Sum;
 
 }
 
-double GROUP::getVariance()
+double Group::getVariance()
 {
     double mean = getMean();
     double sum2 = 0;
@@ -80,7 +80,7 @@ double GROUP::getVariance()
     return (sum2 / Nodes.size() - mean * mean);
 }
 
-double GROUP::getNormVariance(double global_min, double global_max)
+double Group::getNormVariance(double global_min, double global_max)
 {
     double norm_mean = (getMean() - global_max) / (global_min - global_max);
     double sum2 = 0;
@@ -93,7 +93,41 @@ double GROUP::getNormVariance(double global_min, double global_max)
     return (sum2 / Nodes.size() - norm_mean * norm_mean);
 }
 
-double GROUP::getUCBVal(int total_played, double global_min, double global_max)
+Eigen::MatrixXd Group::getCov()
+{
+    Eigen::MatrixXd Cmu;
+    Cmu.setZero(dimension, dimension);
+    Eigen::VectorXd tmp;
+
+    list<Node>::iterator iter;
+    for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
+    {
+        tmp = iter->allele;
+        Cmu += tmp*tmp.transpose();
+    }
+    return Cmu;
+}
+
+Eigen::MatrixXd Group::getCov(double *weight, int weight_length)
+{
+    assert(weight_length == Nodes.size());
+    // make sure weight and Nodes have same size
+    Eigen::MatrixXd Cmu;
+    Cmu.setZero(dimension, dimension);
+    Eigen::VectorXd tmp;
+
+    list<Node>::iterator iter;
+    int index = 0;
+    for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
+    {
+        tmp = iter->allele;
+        Cmu += (tmp*tmp.transpose() * weight[index]);
+        index ++;
+    }
+    return Cmu;
+}
+
+double Group::getUCBVal(int total_played, double global_min, double global_max)
 {
     //ucb_tuned1
     double v = getNormVariance(global_min, global_max) + sqrt(2*log(total_played) / Nodes.size());
@@ -108,26 +142,26 @@ double GROUP::getUCBVal(int total_played, double global_min, double global_max)
 
 }
 
-int GROUP::getSize()
+int Group::getSize()
 {
     return Nodes.size();
 }
 
-Node GROUP::get_mean_node()
+Node Group::get_mean_node()
 {
-    Node tmp(dim);
+    Node tmp;
     list<Node>::iterator iter;
     for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
 	   tmp.allele = tmp.allele + (*iter).allele;
-    Node mean(dim);
+    Node mean;
     mean.allele = tmp.allele / Nodes.size();
     mean.fitness = mean.getFitness();
     return mean;
 }
 
-Node GROUP::get_best_node()
+Node Group::get_best_node()
 {
-    Node best(dim) ;
+    Node best;
     list<Node>::iterator iter = Nodes.begin();
     double min = iter->getFitness();
     best = *iter;
@@ -142,9 +176,9 @@ Node GROUP::get_best_node()
     return best;
 }
 
-Node GROUP::get_worst_node()
+Node Group::get_worst_node()
 {
-    Node worst(dim) ;
+    Node worst;
     list<Node>::iterator iter = Nodes.begin();
     double max = iter->getFitness();
     worst = *iter;
@@ -159,14 +193,14 @@ Node GROUP::get_worst_node()
     return worst;
 }
 
-void GROUP::add_node(Node a)
+void Group::add_node(Node a)
 {
     Nodes.push_back(a);
     AllNodeNum ++;
     return ;
 }
 
-void GROUP::drop_node(Node a)
+void Group::drop_node(Node a)
 {
     list<Node>::iterator iter;
     for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
@@ -176,27 +210,47 @@ void GROUP::drop_node(Node a)
 }
 
 
-void GROUP::replace_node(Node a, Node b)
+void Group::replace_node(Node a, Node b)
 {
     add_node(a);
     drop_node(b);
 }
 
-bool compare_node (Node& first, Node& second)
+void Group::truncate_size(int size)
 {
-  return ( first.getFitness() > second.getFitness() );
+    list<Node>::iterator iter_st = Nodes.begin();
+    list<Node>::iterator iter_end = Nodes.end();
+    advance(iter_st, size);   
+    Nodes.erase(iter_st, iter_end);
 }
 
-void GROUP::sort_node()
+bool compare_node (Node& first, Node& second)
+{
+  return ( first.getFitness() < second.getFitness() );
+}
+
+void Group::sort_node()
 {
     Nodes.sort(compare_node);
 }
 
-void GROUP::print()
+void Group::print()
 {
     list<Node>::iterator iter;
     cout << "========== group nodes: ===========" << endl;
     for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
         iter->print();
     cout << "===================================" << endl;
+}
+
+
+Group& Group::operator=(const Group rhs)
+{
+    if(this == &rhs)
+        return *this;
+
+    AllNodeNum = rhs.AllNodeNum;
+    Nodes.clear();
+    Nodes = rhs.Nodes;
+    return *this;
 }

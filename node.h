@@ -2,6 +2,7 @@
 #define NODE_H
 
 #include "Eigen/Dense"
+
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
@@ -11,13 +12,13 @@ class Node
 		VectorXd allele;
 		double fitness;
 		bool isEvaluated;
-		int dim;
 
-		Node(int dimension, VectorXd input_allele);
-		Node(int dimension);
+		Node(VectorXd input_allele);
+		Node();
 		double getFitness();
 		void print();
-		//Node &operator=(const Node rhs);
+		bool outofBound();
+		Node& operator=(const Node rhs);
 };
 
 #endif

@@ -1,7 +1,8 @@
 #include "Eigen/Dense"
 #include "benchmark.h"
-#include "global.h"
 #include "node.h"
+#include "global.h"
+
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -9,19 +10,18 @@ using namespace std;
 
 test_func *testFunc;
 
-Node::Node(int dimension, VectorXd input_allele)
+
+Node::Node(VectorXd input_allele)
 {
-	dim = dimension;
 	isEvaluated = false;
 	allele = input_allele;
 	fitness = 0.0;
 }
 
-Node::Node(int dimension)
+Node::Node()
 {
-	dim = dimension;
 	isEvaluated = false;
-	allele.setZero(dim); 
+	allele.setZero(dimension); 
 	fitness = 0.0;
 }
 
@@ -30,10 +30,10 @@ double Node::getFitness()
 	if(isEvaluated)
 		return fitness;
 	else{
-		double tmp[dim];
-		for(int i = 0 ; i < dim ; i++)
+		double tmp[dimension];
+		for(int i = 0 ; i < dimension ; i++)
 			tmp[i] = allele(i);
-    	fitness = testFunc->f(tmp , dim);
+    	fitness = testFunc->f(tmp , dimension);
     	isEvaluated = true;
     	NFE++;
     	return fitness;
@@ -42,17 +42,30 @@ double Node::getFitness()
 
 void Node::print()
 {
+	//cout << "-----------------Node----------------";
+	cout << "Node info: " << endl;
 	cout << "allele: " << endl << this->allele << endl;
 	cout << "fitness: " << this->getFitness() << endl;
+	//cout << "---------------Node end--------------";
 }
-/*Node::Node &operator=(const Node rhs)
+
+bool Node::outofBound()
+{
+	for(int i=0 ; i<dimension; i++)
+	{
+		if(allele(i) > solupbound[funNum-1] || allele(i) < sollowbound[funNum -1])
+	    	return true;
+	}
+    return false;
+}
+
+Node& Node::operator=(const Node rhs)
 {
 	if(this == &rhs)
 	    return *this;
 	allele = rhs.allele;
 	fitness = rhs.fitness;
 	isEvaluated = rhs.isEvaluated;
-	dim = rhs.dim;
 	return *this;
-}*/
+}
 

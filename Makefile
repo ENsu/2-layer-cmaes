@@ -7,7 +7,7 @@ LFLAGS = -lgsl -lgslcblas -lm
 CXXFLAGS = -O2 -Wall -march=native
 
 OBJS  = main.o \
-	random.o benchmark.o group.o node.o\
+	random.o benchmark.o cmaes.o group.o node.o global.o\
         F01_shifted_sphere.o \
         F02_shifted_schwefel.o \
         F03_shifted_rotated_high_cond_elliptic.o \
@@ -40,10 +40,11 @@ ecga: $(OBJS)
 clean:
 	rm *.o rECGA_FHH
 
-main.o: main.cpp group.h
-	$(CC) $(FLAG) main.cpp
+cmaes.o: cmaes.cpp cmaes.h group.h global.h
+	$(CC) $(FLAG) cmaes.cpp
 
-group.o: group.cpp group.h node.h
+group.o: group.cpp group.h node.h global.h
 	$(CC) $(FLAG) group.cpp
 
-node.o: 
+node.o: node.cpp node.h global.h
+	$(CC) $(FLAG) node.cpp

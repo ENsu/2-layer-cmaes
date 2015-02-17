@@ -2,78 +2,99 @@
 #include <iostream>
 #include <cctype>
 #include <cstdlib>
-#include "group.h"
 #include "benchmark.h"
 #include "cmaes.h"
+#include "group.h"
+#include "node.h"
+#include "global.h"
 
 using namespace std;
 using Eigen::VectorXd;
+using Eigen::MatrixXd;
 
 extern test_func *testFunc;
-extern int NFE;
 
+randomG RANDOM;
 
 int main( int argc, char *argv[] )
 {
-	// process command line
 	/*if( argc != 4 )   
 	{
 		cout << "Usage: " << argv[0] << " inputfile outputfile outputfile2" << endl;
 		cout << "       Please read the README file." << endl;
 		exit(1);
 	}*/
-	// read parameters from input file
-//	ifstream infile( argv[1] ); 
-//	read_parameters( infile );
-//	infile.close();
-//	// open output file
-//	ofstream outfile( argv[2] );  
-//	ofstream outfile2( argv[3] );
-//	// initilalize random number generator
-//	RANDOM.randomize( parameter::seed );
-//	RANDOM.randomize();
-	initial();		//upload the value of /supportData/fbias_data.txt into m_biases; sqrt(((double )i) + 1.0) into  m_iSqrt
-	testFunc=testFunctionFactory(5,2);
+	// parameters
+	dimension = 2;
+	funNum = 1;
+	double lowerbound = domainlowbound[funNum-1];
+	double upperbound = domainupbound[funNum-1];
+	// initialize the problem
+	RANDOM.randomize(time(NULL));
+	initial();
+	testFunc=testFunctionFactory(funNum,dimension);
 
 
-	double tmp[2];
-	tmp[0] = 0;
-	tmp[1] = 0;
-	double result = testFunc->f(tmp , 2);
-	cout << result << endl;
+	//Node *nodes = new Node[popSize];
+	list<Node> tmp_node_list;
+	int lambda = int(4 + 3 * log(dimension));
+	int mu = int(lambda/2);
+	double sigma = (upperbound - lowerbound) / 2;
+	cout << "=========" << lambda << "======" << endl;
+	cout << "=========" << mu << "======" << endl;
 
-	VectorXd a(2);
-	a << 0, 0;
-	Node node(2, a);
-	cout << node.getFitness() << endl;
-	cout << NFE << endl;
-
-	list<Node> tmp_list;
-	for(int i=0; i<10; i++)
+	for(int i=0; i<mu; i++)
 	{
-		a << i, i;
-		Node node(2, a);
-		cout << node.getFitness() << endl;
-		tmp_list.push_back(node);
+		Eigen::VectorXd a(dimension);
+		for(int i=0; i<dimension; i++)
+			a(i) = RANDOM.uniform(lowerbound , upperbound);
+		tmp_node_list.push_back(Node(a));
 	}
-	GROUP group(1,2, tmp_list);
-	cout << group.getMin() << endl;
-	cout << group.getMean() << endl;
-	cout << group.getMax() << endl;
-	cout <<	group.getVariance() << endl;
-	cout <<	group.getUCBVal(10, group.getMin(), group.getMax()) << endl;
-	cout <<	group.getSize() << endl;
-	group.sort_node();
-	group.print();
+
+	Group my_group = Group(tmp_node_list);
+
+	CMAES cmaes(mu, lambda, sigma, &my_group);
+	Node best_node = my_group.get_best_node();
+
+	Eigen::MatrixXd covar(2,2);
+	//cout << X << endl;
+	//Eigen::MatrixXd A = X * X.transpose();
+	//cout << A << endl;
+	covar <<  693.847, -743.084, -743.084, 795.814;
+	//cout << covar << endl;
+	Eigen::SelfAdjointEigenSolver<MatrixXd> es(covar / covar.norm());
+	//cout << es. << endl;
+    cout << es.operatorInverseSqrt() << endl;
+	//while(best_node.getFitness() > -449)
+	//{
+/*
+	for(int i=0; i<1000; i++)
+	{
+		cout << "generation: " << i << endl;
+		cmaes.run();
+		my_group = *cmaes.group;
+		best_node = my_group.get_best_node();
+		best_node.print();
+		cout <<"yw: " << cmaes.yw << endl;
+		cout <<"ps: " << cmaes.ps << endl;
+		cout <<"pc: " << cmaes.pc << endl;
+		cout <<"covar: " << cmaes.covar << endl;
+		cout <<"sigma: " << cmaes.sigma << endl;
+	}
+	//my_group.print();
+	cout << "NFE:" << NFE << endl;
+	//}
+	//my_group.print();	
+	//create population
 
 
+	//group them
 
+	//create bar
 
+	//check condition
 
-	// run the ECGA algorithm
-//	cout << "ECGA done" << endl;
-//	cout << "Evaluated functions:" << parameter::eva_fun << endl;
-//	outfile.close();
-//	outfile2.close();
+	//allocate resource
+*/
 	return 0;
 }
