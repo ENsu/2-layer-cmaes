@@ -39,7 +39,7 @@ int main( int argc, char *argv[] )
 	list<Node> tmp_node_list;
 	int lambda = int(4 + 3 * log(dimension));
 	int mu = int(lambda/2);
-	double sigma = (upperbound - lowerbound) / 2;
+	double sigma = (upperbound - lowerbound) * 0.3;
 	cout << "=========" << lambda << "======" << endl;
 	cout << "=========" << mu << "======" << endl;
 
@@ -67,7 +67,7 @@ int main( int argc, char *argv[] )
     cout << es.operatorInverseSqrt() << endl;
 	//while(best_node.getFitness() > -449)
 	//{
-/*
+
 	for(int i=0; i<1000; i++)
 	{
 		cout << "generation: " << i << endl;
@@ -95,6 +95,6 @@ int main( int argc, char *argv[] )
 	//check condition
 
 	//allocate resource
-*/
+
 	return 0;
 }

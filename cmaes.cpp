@@ -12,21 +12,23 @@ using Eigen::MatrixXd;
 
 CMAES::CMAES(int mu_ref, int lambda_ref, double sigma_ref, Group *group_ref)
 {
-	mu = mu_ref;
-	lambda = lambda_ref;
-	sigma = sigma_ref;
 	group = group_ref;
+	mu = mu_ref;
+	sigma = sigma_ref;
+	lambda = lambda_ref;
+
+	//-------init dynamic parameters---------
     pc.setZero(dimension);
     ps.setZero(dimension);
     yw.setZero(dimension);
-    init_unchangable_values();
+    covar.setIdentity(dimension , dimension);
+    init_static_parameters();
 	// initialize covar with group's node's distribution
     //covar = group->getCov(weight, mu);
     //covar = covar / covar.norm();
-   	covar.setIdentity(dimension , dimension);
 }
 
-void CMAES::init_unchangable_values()  // these values won't be changed during cma-es
+void CMAES::init_static_parameters()  // these values won't be changed during cma-es
 {
 	double weight_sum_2 = 0;
     weight = new double[mu];
@@ -56,7 +58,7 @@ void CMAES::init_unchangable_values()  // these values won't be changed during c
 	e_n01 = sqrt(dimension) * ( 1.0 - 1.0 / (4*dimension) + 1.0 / (21 * dimension * dimension) );
 
 
-	cout << "----------initiate unchagable values----------" << endl;
+	cout << "----------init static parameters----------" << endl;
 	cout << "mu_w :" << mu_w << endl;
 	cout << "cc: " << cc << endl;
 	cout << "cs: " << cs << endl;
@@ -87,7 +89,7 @@ void CMAES::run() // run an cma-es iteration
 		Node tmp(sample);
 		while(tmp.outofBound())
 		{
-			sample = MVNsample(covar / covar.norm()).col(0);
+			sample = MVNsample(covar).col(0);
 			sample = (sample * sigma) + old_mean;
 			tmp = Node(sample);
 		}

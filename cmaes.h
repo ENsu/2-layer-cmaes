@@ -19,7 +19,7 @@ class CMAES
 		int lambda;
 		double sigma;
 		CMAES(int mu_ref, int lambda_ref, double sigma_ref, Group *group_ref);
-		void init_unchangable_values();
+		void init_static_parameters();
 		~CMAES();
 
 		Eigen::MatrixXd covar;
