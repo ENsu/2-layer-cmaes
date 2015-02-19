@@ -34,7 +34,6 @@ int main( int argc, char *argv[] )
 	initial();
 	testFunc=testFunctionFactory(funNum,dimension);
 
-
 	//Node *nodes = new Node[popSize];
 	list<Node> tmp_node_list;
 	int lambda = int(4 + 3 * log(dimension));
@@ -42,6 +41,8 @@ int main( int argc, char *argv[] )
 	double sigma = (upperbound - lowerbound) * 0.3;
 	cout << "======lambda: " << lambda << "======" << endl;
 	cout << "==========mu: " << mu << "======" << endl;
+for(int k=0; k<100; k++)
+{
 	tmp_node_list.clear();
 	for(int i=0; i<mu; i++)
 	{
@@ -63,17 +64,14 @@ int main( int argc, char *argv[] )
 		cmaes.run();
 		my_group = *cmaes.group;
 		best_node = my_group.get_best_node();
-		best_node.print();
 		if(fabs(best_node.getFitness() + 450) < 1E-10 )
 			break;
-		//cout <<"ps: " << cmaes.ps << endl;
-		//cout <<"pc: " << cmaes.pc << endl;
-		//cout <<"covar: " << cmaes.covar << endl;
-		//cout <<"sigma: " << cmaes.sigma << endl;
 	}
 	//my_group.print();
 	cout << "generation: " << generation << endl;
 	cout << "NFE: " << NFE << endl;
+
+}
 	//}
 	//my_group.print();	
 	//create population
