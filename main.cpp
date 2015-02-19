@@ -41,7 +41,7 @@ int main( int argc, char *argv[] )
 	double sigma = (upperbound - lowerbound) * 0.3;
 	cout << "======lambda: " << lambda << "======" << endl;
 	cout << "==========mu: " << mu << "======" << endl;
-for(int k=0; k<100; k++)
+for(int k=0; k<1000; k++)
 {
 	tmp_node_list.clear();
 	for(int i=0; i<mu; i++)
@@ -60,7 +60,7 @@ for(int k=0; k<100; k++)
 	for(int i=0; i<500; i++)
 	{
 		generation ++;
-		cout << "generation: " << generation << endl;
+		//cout << "generation: " << generation << endl;
 		cmaes.run();
 		my_group = *cmaes.group;
 		best_node = my_group.get_best_node();
@@ -68,8 +68,10 @@ for(int k=0; k<100; k++)
 			break;
 	}
 	//my_group.print();
+	cout << "best fitness: " << best_node.getFitness() << endl;
 	cout << "generation: " << generation << endl;
 	cout << "NFE: " << NFE << endl;
+	generation = 0;
 
 }
 	//}

@@ -165,34 +165,18 @@ void CMAES::update_covar(Eigen::MatrixXd zi)
 	covar = Covd + Covs.transpose();
 
 	//update B & D
-	cout << "==========covar========" << endl << covar << endl;
 	Eigen::EigenSolver<MatrixXd> es(covar);
 	assert(es.eigenvalues().imag().isZero());
+	Eigen::VectorXd eigenvalues = es.eigenvalues().real();
 	D = es.eigenvalues().real().cwiseSqrt().asDiagonal();
 	assert(es.eigenvectors().imag().isZero());
 	B = es.eigenvectors().real();
-	cout << "==========B: ==========" << endl << B << endl;
 	for(int i=0; i<dimension; i++)
 	{
-		cout << "i = " << i << endl;
-		for(int j=i+1; j<dimension; j++)
-		{
-			cout << "j = " << j << endl;
-			cout << "dot: " << B.col(i).dot(B.col(j)) << endl; 
-			assert(B.col(i).dot(B.col(j)) < 1E-10); 
-		}
-		cout << "norm: " << B.col(i).norm() << endl;
+		assert((covar * B.col(i)).isApprox(eigenvalues(i) * B.col(i)));
 		assert(fabs(B.col(i).norm() - 1) < 1E-10);
 	}
-	cout << "B * BT = " << (B * B.transpose()).transpose() << endl; 
-	cout << "BT * B = " << B.transpose() * B << endl;
-	Eigen::MatrixXd tmp;
-	tmp.setIdentity(dimension, dimension);
-	assert(tmp.isApprox(B * B.transpose()));
-	assert(tmp.isApprox(B.transpose() * B));
-	assert(covar.isApprox(B*D*D*B.transpose()));
-//	cout << "check0: " << endl << B.inverse() << endl << "-----" << endl << B.transpose() << endl;
-//	cout << "check1: " << endl << B * D * D * B.transpose() << endl;
+	assert(covar.isApprox(B*D*D*B.inverse()));
     return ;
 }
 
