@@ -20,18 +20,17 @@ class Group
 
 		double getMin();
 		double getMean();
-		double getMean(double *weight, int weight_length);
 		double getMax();
 		double getVariance();
 		double getNormVariance(double global_min, double global_max);
-		Eigen::MatrixXd getCov();
-		Eigen::MatrixXd getCov(double *weight, int weight_length);
 		double getUCBVal(int total_played, double global_min, double global_max);
 		int getSize();
 
-		Node get_mean_node();		
+		Node get_mean_node();	
+		Node get_mean_node(Eigen::VectorXd weight);	
 		Node get_best_node();
 		Node get_worst_node();
+		Eigen::MatrixXd node_matrix();
 		
 		void add_node(Node a);
 		void drop_node(Node a);

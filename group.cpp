@@ -50,26 +50,6 @@ double Group::getMean()
     return (tmpSum / Nodes.size());
 }
 
-double Group::getMean(double *weight, int weight_length)
-{
-    assert(weight_length == Nodes.size());
-    // make sure weight and Nodes have same size
-    double Sum = 0;
-    double weightSum = 0;
-
-    int index = 0;
-    list<Node>::iterator iter;
-    for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
-    {
-        Sum += weight[index] * iter->getFitness();
-        weightSum += weight[index];
-        index++;
-    }
-    assert(weightSum == 1);
-    return Sum;
-
-}
-
 double Group::getVariance()
 {
     double mean = getMean();
@@ -91,40 +71,6 @@ double Group::getNormVariance(double global_min, double global_max)
            sum2 +=  tmp * tmp;
     }
     return (sum2 / Nodes.size() - norm_mean * norm_mean);
-}
-
-Eigen::MatrixXd Group::getCov()
-{
-    Eigen::MatrixXd Cmu;
-    Cmu.setZero(dimension, dimension);
-    Eigen::VectorXd tmp;
-
-    list<Node>::iterator iter;
-    for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
-    {
-        tmp = iter->allele;
-        Cmu += tmp*tmp.transpose();
-    }
-    return Cmu;
-}
-
-Eigen::MatrixXd Group::getCov(double *weight, int weight_length)
-{
-    assert(weight_length == Nodes.size());
-    // make sure weight and Nodes have same size
-    Eigen::MatrixXd Cmu;
-    Cmu.setZero(dimension, dimension);
-    Eigen::VectorXd tmp;
-
-    list<Node>::iterator iter;
-    int index = 0;
-    for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
-    {
-        tmp = iter->allele;
-        Cmu += (tmp*tmp.transpose() * weight[index]);
-        index ++;
-    }
-    return Cmu;
 }
 
 double Group::getUCBVal(int total_played, double global_min, double global_max)
@@ -155,7 +101,26 @@ Node Group::get_mean_node()
 	   tmp.allele = tmp.allele + (*iter).allele;
     Node mean;
     mean.allele = tmp.allele / Nodes.size();
-    mean.fitness = mean.getFitness();
+    return mean;
+}
+
+Node Group::get_mean_node(Eigen::VectorXd weight)
+{
+    // make sure weight and Nodes have same size 
+    assert(weight.size() == Nodes.size());
+    double weightSum = 0;
+    int index = 0;
+    sort_node();
+
+    Node mean;
+    list<Node>::iterator iter;
+    for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
+    {
+       mean.allele = mean.allele + (*iter).allele * weight[index];
+       weightSum += weight[index];
+       index ++;
+    }
+    assert(fabs(weightSum - 1) < 1E-10);
     return mean;
 }
 
@@ -191,6 +156,20 @@ Node Group::get_worst_node()
         }
     }
     return worst;
+}
+
+Eigen::MatrixXd Group::node_matrix()
+{
+    sort_node();
+    Eigen::MatrixXd tmp(dimension, Nodes.size());
+    int index = 0;
+    list<Node>::iterator iter;
+    for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
+    {
+        tmp.col(index) = iter->allele;
+        index ++;
+    }
+    return tmp;
 }
 
 void Group::add_node(Node a)
@@ -242,7 +221,6 @@ void Group::print()
         iter->print();
     cout << "===================================" << endl;
 }
-
 
 Group& Group::operator=(const Group rhs)
 {

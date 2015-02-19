@@ -10,7 +10,7 @@ class CMAES
 		double cc , cs , c1 , cmu , ds;
 		double e_n01;
 		double mu_w;
-		double *weight;
+		Eigen::VectorXd weight;
 
     public:
     	Group *group;
@@ -22,20 +22,19 @@ class CMAES
 		void init_static_parameters();
 		~CMAES();
 
+		Eigen::MatrixXd B, D;
 		Eigen::MatrixXd covar;
 		Eigen::VectorXd pc , ps;
-		Eigen::VectorXd yw; 
 		// this can be obtained by (mean_new - mean_old) / sigma
 		// actually don't need to be remembered during iteration
 
-		void value_update(Eigen::VectorXd new_mean, Eigen::VectorXd old_mean);
+		void value_update(Eigen::VectorXd z_mean, Eigen::MatrixXd zi);
 		int h_sig();
-		void update_yw(Eigen::VectorXd new_mean, Eigen::VectorXd old_mean);
-		void update_pc();
-		void update_ps();
-		void update_covar();
+		void update_ps(Eigen::VectorXd z_mean);
+		void update_pc(Eigen::VectorXd z_mean);
+		void update_covar(Eigen::MatrixXd zi);
 		void update_sigma();
 		void run();
-		Eigen::MatrixXd MVNsample(Eigen::MatrixXd covar);
+		Eigen::VectorXd MVNsample();
 };
 
