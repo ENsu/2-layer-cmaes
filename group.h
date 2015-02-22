@@ -38,6 +38,7 @@ class Group
 
 		void truncate_size(int size);
 		void sort_node();
+		list<Node> random_pick(int pick_num);
 		void print();
 
 		Group& operator=(const Group rhs);

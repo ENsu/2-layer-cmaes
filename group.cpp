@@ -2,6 +2,9 @@
 #include "global.h"
 #include <assert.h>
 #include <cfloat>
+#include "random.hpp"
+
+extern randomG RANDOM;
 
 Group::Group(list<Node> new_Nodes)
 {
@@ -36,8 +39,10 @@ double Group::getMax()
     double tmpMax = -1* DBL_MAX;
     list<Node>::iterator iter;
     for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
+    {
        if(iter->getFitness() > tmpMax)
            tmpMax = iter->getFitness();
+    }
     return tmpMax;
 }
 
@@ -77,15 +82,12 @@ double Group::getUCBVal(int total_played, double global_min, double global_max)
 {
     //ucb_tuned1
     double v = getNormVariance(global_min, global_max) + sqrt(2*log(total_played) / Nodes.size());
-    cout << getNormVariance(global_min, global_max) << endl;
-    cout << sqrt(2*log(total_played) / Nodes.size()) << endl;
     double V = (v>0.25) ? 0.25 : v;
     double norm_mean = (getMean() - global_max) / (global_min - global_max);
-   // double norm_min = (getMin() - global_max) / (global_min - global_max);
+    // double norm_min = (getMin() - global_max) / (global_min - global_max);
 
-   // double tmp = newMean - sqrt(log(total) / AllUsedNumber *V);
+    // double tmp = newMean - sqrt(log(total) / AllUsedNumber *V);
     return norm_mean + sqrt(V * log(total_played) / Nodes.size());
-
 }
 
 int Group::getSize()
@@ -211,6 +213,25 @@ bool compare_node (Node& first, Node& second)
 void Group::sort_node()
 {
     Nodes.sort(compare_node);
+}
+
+list<Node> Group::random_pick(int pick_num)
+{
+    if(pick_num > Nodes.size())
+        return Nodes;
+    else
+    {
+        list<Node> pick_nodes;
+        int *intArry = new int[Nodes.size()];
+        RANDOM.uniformArray(intArry , Nodes.size(), 0 , Nodes.size()-1);
+        for(int i=0; i< pick_num; i++)
+        {
+            list<Node>::iterator iter = Nodes.begin();
+            std::advance(iter, intArry[i]);
+            pick_nodes.push_back(*iter);
+        }
+        return pick_nodes;
+    }
 }
 
 void Group::print()

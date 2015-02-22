@@ -7,7 +7,7 @@ LFLAGS = -lgsl -lgslcblas -lm
 CXXFLAGS = -O2 -Wall -march=native
 
 OBJS  = main.o \
-	benchmark.o cmaes.o group.o node.o global.o random.o\
+	benchmark.o cmaes.o group.o node.o global.o random.o \
         F01_shifted_sphere.o \
         F02_shifted_schwefel.o \
         F03_shifted_rotated_high_cond_elliptic.o \
@@ -34,11 +34,11 @@ OBJS  = main.o \
         F24_rotated_hybrid_composition_4.o \
         F25_rotated_hybrid_composition_4_bound.o\
 
-ecga: $(OBJS)
-	g++ -o rECGA_FHH $(OBJS) $(LFLAGS) 
+cmaes: $(OBJS)
+	g++ -o cmaes $(OBJS) $(LFLAGS) 
 
 clean:
-	rm *.o rECGA_FHH
+	rm *.o cmaes
 
 benchmark.o: benchmark.cpp benchmark.h random.hpp test_func.h HCJob.h 
 	$(CC) $(FLAG) benchmark.cpp
@@ -46,7 +46,7 @@ benchmark.o: benchmark.cpp benchmark.h random.hpp test_func.h HCJob.h
 cmaes.o: cmaes.cpp cmaes.h group.h global.h random.hpp
 	$(CC) $(FLAG) cmaes.cpp
 
-group.o: group.cpp group.h node.h global.h
+group.o: group.cpp group.h node.h global.h random.hpp
 	$(CC) $(FLAG) group.cpp
 
 node.o: node.cpp node.h global.h

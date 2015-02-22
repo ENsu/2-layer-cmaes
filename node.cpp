@@ -14,6 +14,7 @@ test_func *testFunc;
 Node::Node(VectorXd input_allele)
 {
 	isEvaluated = false;
+	isVirtual = false;
 	allele = input_allele;
 	fitness = 0.0;
 }
@@ -21,6 +22,7 @@ Node::Node(VectorXd input_allele)
 Node::Node()
 {
 	isEvaluated = false;
+	isVirtual = false;
 	allele.setZero(dimension); 
 	fitness = 0.0;
 }
@@ -29,23 +31,35 @@ double Node::getFitness()
 {
 	if(isEvaluated)
 		return fitness;
-	else{
+	else if(!isVirtual)
+	{
 		double tmp[dimension];
 		for(int i = 0 ; i < dimension ; i++)
+		{
 			tmp[i] = allele(i);
+		}
+		testFunc=testFunctionFactory(funNum,dimension);
     	fitness = testFunc->f(tmp , dimension);
     	isEvaluated = true;
     	NFE++;
     	return fitness;
+	}
+	else
+	{
+		cout << "Should not call a virtual node without fitness assignment" << endl;
+		assert(1);
+		return NULL;
 	}
 }
 
 void Node::print()
 {
 	//cout << "-----------------Node----------------";
-	cout << "Node info: " << endl;
-	cout << "allele: " << endl << this->allele << endl;
-	cout << "fitness: " << this->getFitness() << endl;
+	cout << "-----Node info-----" << endl;
+	cout << "isEvaluated: " << isEvaluated << endl;
+	cout << "isVirtual: " << isVirtual << endl;
+	cout << "allele: " << endl << allele << endl;
+	cout << "fitness: " << getFitness() << endl;
 	//cout << "---------------Node end--------------";
 }
 

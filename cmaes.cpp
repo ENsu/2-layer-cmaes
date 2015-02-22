@@ -11,6 +11,8 @@ using Eigen::MatrixXd;
 
 extern randomG RANDOM;
 
+CMAES::CMAES(){}
+
 CMAES::CMAES(int mu_ref, int lambda_ref, double sigma_ref, Group *group_ref)
 {
 	group = group_ref;
@@ -60,64 +62,88 @@ void CMAES::init_static_parameters()  // these values won't be changed during cm
 	double cmu_tmp = apha_mu*(mu_w - 2 + 1/mu_w) / ((n + 2)*(n + 2) + apha_mu*mu_w/2);
 	cmu = min(1 - c1, cmu_tmp);
 	e_n01 = sqrt(dimension) * ( 1.0 - 1.0 / (4*dimension) + 1.0 / (21 * dimension * dimension) );
-
-	cout << "----------init static parameters----------" << endl;
-	cout << "mu_w :" << mu_w << endl;
-	cout << "cc: " << cc << endl;
-	cout << "cs: " << cs << endl;
-	cout << "c1: " << c1 << endl;
-	cout << "cmu: " << cmu << endl;
-	cout << "ds:" << ds << endl;
-	cout << "----------------------------------------------" << endl;
 }
 
 CMAES::~CMAES(){}
 
+// if its Group's Node number not equal to mu
+// cmaes changes its number of Node to be equal to mu
+void CMAES::tune_node_num()
+{
+	// if the number of nodes in group is different from mu
+	// we add/substract nodes to meet mu
+	if(group->Nodes.size() > mu)
+	{
+		group->sort_node();
+		group->truncate_size(mu);
+	}
+	else if(group->Nodes.size() < mu)
+	{
+		int node_added = mu - group->Nodes.size();
+		Eigen::VectorXd mean = group->get_mean_node().allele;
+		for(int i=0; i < node_added; i++)
+		{
+			Node tmp(MVNsample(mean));
+			while(tmp.outofBound()) // just resample when node out of boundary
+			{
+				tmp = Node(MVNsample(mean));
+			}
+			group->add_node(tmp);
+		}
+	}
+	assert(group->Nodes.size() == mu);
+}
 
 void CMAES::run() // run an cma-es iteration
 {
-	//-----------step 1: sample new lambda - mu points---------
+	//check group's node number == mu value
+	//if not, you shoule run function tune_node_num first
+	assert(group->Nodes.size() == mu);
+
+	//-----------step 1: sample new lambda - mu points and add to group---------
 	int new_sample_num = lambda - mu;
-	assert(new_sample_num > 0);
-	Eigen::MatrixXd old_xi = group->node_matrix();
-	Node *y = new Node[new_sample_num];
-	Node mean = group->get_mean_node(weight);
-	// assert(old_xi * weight == group->get_mean_node(weight).allele);
-	for(int i=0; i<new_sample_num; i++) //prepare the new (lambda - mu) sample points
-	{
-		Eigen::VectorXd sample = MVNsample();
+	list<Node> new_sample_node = sample_node(new_sample_num);
 
-		sample = (sample * sigma) + mean.allele;
-		Node tmp(sample);
-		while(tmp.outofBound()) // just resample when node out of boundary
-		{
-			sample = MVNsample();
-			sample = (sample * sigma) + mean.allele;
-			tmp = Node(sample);
-		}
-		y[i] = tmp;
-	}
-
-	//-----------step 2: add these node in group and do selection---------
-	for(int i=0; i<new_sample_num; i++)
-	{
-		group->add_node(y[i]);
-	}
-	group->sort_node();
-	group->truncate_size(mu);
+	//--------step 2: create new group with selected node---------
+	list<Node> all_node_list = group->Nodes;
+	all_node_list.splice(all_node_list.end(), new_sample_node);
+	Group new_group = Group(all_node_list);
+	new_group.sort_node();
+	new_group.truncate_size(mu);
 
 	//-----------step 3: update relative variables, pc, ps, C, sigma---------
-	//mean is updated in Group class
-	Eigen::MatrixXd new_xi = group->node_matrix();
-	Eigen::MatrixXd zi = D.inverse() * B.transpose() * (new_xi - old_xi) / sigma;
-	Eigen::VectorXd z_mean = zi * weight;
-	value_update(z_mean, zi); // update the relativa value, 
+	update_value(new_group);
 	return ;
 }
 
-// update pc, ps, covar, sigma
-void CMAES::value_update(Eigen::VectorXd z_mean, Eigen::MatrixXd zi)
+list<Node> CMAES::sample_node(int node_num)
 {
+	list<Node> new_sample_node;
+	Eigen::VectorXd mean = group->get_mean_node(weight).allele;
+	for(int i=0; i<node_num; i++) //prepare the new (lambda - mu) sample points
+	{	
+		Node tmp(MVNsample(mean));
+		while(tmp.outofBound()) // just resample when node out of boundary
+		{
+			tmp = Node(MVNsample(mean));
+		}
+		new_sample_node.push_back(tmp);
+	}
+	return new_sample_node;
+}
+
+// cmaes can passively receive a new group as sampling result
+// and update its related parameters, B, D, covar, pc, ps and sigma
+void CMAES::update_value(Group new_group)
+{
+	Eigen::MatrixXd old_xi = group->node_matrix();
+	assert(old_xi * weight == group->get_mean_node(weight).allele);
+	Eigen::MatrixXd new_xi = new_group.node_matrix();
+	assert(new_xi * weight == new_group.get_mean_node(weight).allele);
+	group = &new_group;
+	Eigen::MatrixXd zi = D.inverse() * B.transpose() * (new_xi - old_xi) / sigma;
+	Eigen::VectorXd z_mean = zi * weight;
+
 	update_ps(z_mean);
 	update_pc(z_mean);
 	update_covar(zi);
@@ -189,10 +215,37 @@ void CMAES::update_sigma()
 }
 
 // multivariate noraml sampling with certain covar
-Eigen::VectorXd CMAES::MVNsample()
+Eigen::VectorXd CMAES::MVNsample(VectorXd mean)
 {
 	Eigen::VectorXd sample(dimension);
 	for(int i=0; i<dimension; i++)
 		sample(i) = RANDOM.normal01();
-	return B * D * sample;
+	return mean + sigma * B * D * sample;
 } // ref from http://stackoverflow.com/questions/6142576/sample-from-multivariate-normal-gaussian-distribution-in-c
+
+CMAES& CMAES::operator=(const CMAES rhs)
+{
+    if(this == &rhs)
+        return *this;
+
+    cc = rhs.cc;
+    cs = rhs.cs;
+    c1 = rhs.c1;
+    cmu = rhs.cmu;
+    ds = rhs.ds;
+    e_n01 = rhs.e_n01;
+    mu_w = rhs.mu_w;
+
+    group = rhs.group; // they share the same group, right?
+    mu = rhs.mu;
+    lambda = rhs.lambda;
+    sigma = rhs.sigma;
+    weight = rhs.weight;
+    B = rhs.B;
+    D = rhs.D;
+    covar = rhs.covar;
+    pc = rhs.pc;
+    ps = rhs.ps;
+
+    return *this;
+}

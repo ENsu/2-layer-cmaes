@@ -23,6 +23,8 @@ class randomG
 		long   geometric( double p );
 		double normal01();
 		double normal( double mean, double variance );
+		void uniformArray (int *array, int num, int a, int b);
+
 };
 
 

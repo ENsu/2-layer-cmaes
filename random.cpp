@@ -39,7 +39,7 @@ double randomG::uniform( double a, double b )
 
 int randomG::uniform( int a, int b )
 {
-	assert( b > a );
+	assert( b >= a );
 //	int i = int( (b-a+1) * uniform01() + a );
 //	if( i>b ) i=b;
 	int i=gsl_rng_uniform_int(r,b-a+1)+a;
@@ -109,4 +109,24 @@ double randomG::normal( double mean, double variance )
 	double stddev = sqrt( variance );
 
 	return mean + stddev * X;
+}
+
+void randomG::uniformArray (int *array, int num, int a, int b)
+{
+
+  int *base = new int[b - a + 1];
+  int i;
+  int r;
+
+  for (i = 0; i < b - a + 1; i++)
+    base[i] = a + i;
+
+  for (i = 0; i < num; i++)
+    {
+      r = uniform(0, b - a - i);
+      array[i] = base[r];
+      base[r] = base[b - a - i];
+    }
+
+  delete[]base;
 }
