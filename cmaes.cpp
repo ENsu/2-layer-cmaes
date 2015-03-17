@@ -99,7 +99,6 @@ void CMAES::run() // run an cma-es iteration
 	//check group's node number == mu value
 	//if not, you shoule run function tune_node_num first
 	assert(group->Nodes.size() == mu);
-
 	//-----------step 1: sample new lambda - mu points and add to group---------
 	int new_sample_num = lambda - mu;
 	list<Node> new_sample_node = sample_node(new_sample_num);
@@ -107,12 +106,13 @@ void CMAES::run() // run an cma-es iteration
 	//--------step 2: create new group with selected node---------
 	list<Node> all_node_list = group->Nodes;
 	all_node_list.splice(all_node_list.end(), new_sample_node);
-	Group new_group = Group(all_node_list);
-	new_group.sort_node();
-	new_group.truncate_size(mu);
+	Group *new_group = new Group(all_node_list);
 
+	new_group->sort_node();
+	new_group->truncate_size(mu);
 	//-----------step 3: update relative variables, pc, ps, C, sigma---------
-	update_value(new_group);
+	update_value(*new_group);
+	group = new_group;
 	return ;
 }
 

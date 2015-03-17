@@ -67,6 +67,7 @@ list<Node> group_to_virtual_nodes(CMAES *cmaesArry, Group *groupArry, int arryLe
 		virtualNodes.push_back(virtual_node);
 	}
 
+
 	return virtualNodes;
 }
 
@@ -90,7 +91,9 @@ int main( int argc, char *argv[] )
 	double lowerbound = domainlowbound[funNum-1];
 	double upperbound = domainupbound[funNum-1];
 	int lambda = int(4 + 3 * log(dimension));
+	cout << "value of lambda: " << lambda << endl;
 	int mu = int(lambda/2);
+	cout << "value of mu: " << mu << endl;
 	double sigma = (upperbound - lowerbound) * 0.3;
 
 	// some value used
@@ -133,6 +136,7 @@ int main( int argc, char *argv[] )
 		for(iter = vectorGroup[i].begin() ; iter != vectorGroup[i].end() ; ++iter)
 			tmp_node_list.push_back(Node(*iter));
 		Layer1Groups[i] = Group(tmp_node_list);
+
 		Layer1CMAESs[i] = CMAES(mu, lambda, sigma, &Layer1Groups[i]);
 		Layer1CMAESs[i].tune_node_num();
 		tmp_node_list.clear();
@@ -170,20 +174,21 @@ int main( int argc, char *argv[] )
 				UCBmax = iter->getFitness();
 				UCBmax_id = iter->group_id;
 			}
-		cout << "UCBmax = " << UCBmax << endl;
-		cout << "UCBmax_id = " << UCBmax_id << endl;
-		cout << "UCB_global = " << UCB_global << endl;
+		//cout << "UCBmax = " << UCBmax << endl;
+		//cout << "UCBmax_id = " << UCBmax_id << endl;
+		//cout << "UCB_global = " << UCB_global << endl;
 		if(UCBmax > UCB_global)
 		{
-			Layer1Groups[UCBmax_id].print();
+			cout << "into 1 layer cmaes process" << endl;
 			Layer1CMAESs[UCBmax_id].run();
-			Layer1Groups[UCBmax_id].print();
+			//Layer1Groups[UCBmax_id] = Layer1CMAESs[UCBmax_id].group;
 			Layer1VirtualNodes = group_to_virtual_nodes(Layer1CMAESs, Layer1Groups, mu);
 			Group Layer2Group(Layer1VirtualNodes);
 			Layer2CMAES.update_value(Layer2Group);
 		}
 		else
 		{
+			cout << "into 2 layer cmaes process" << endl;
 			// layer 2 cmaes run...
 			// sample (lambda - mu) real nodes according to virtaul nodes
 			list<Node> virtualNodesPool = Layer2CMAES.sample_node(lambda - mu);
