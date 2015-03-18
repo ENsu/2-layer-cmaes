@@ -48,7 +48,7 @@ list<Node> random_sample(Group *groupArry, int arryLen, int each)
 
 list<Node> group_to_virtual_nodes(CMAES *cmaesArry, Group *groupArry, int arryLen)
 {
-	int gen_node_num = 0;
+	int gen_node_num = 0; 
 	double gen_max = -1 * DBL_MAX;
 	double gen_min = DBL_MAX;
 
@@ -85,9 +85,11 @@ int main( int argc, char *argv[] )
 	RANDOM.randomize(time(NULL));
 	initial();
 
+	int generation = 0;
+
 	// global parameters
 	dimension = 2;
-	funNum = 1;
+	funNum = 4;
 	double lowerbound = domainlowbound[funNum-1];
 	double upperbound = domainupbound[funNum-1];
 	int lambda = int(4 + 3 * log(dimension));
@@ -96,8 +98,38 @@ int main( int argc, char *argv[] )
 	cout << "value of mu: " << mu << endl;
 	double sigma = (upperbound - lowerbound) * 0.3;
 
+if(true) // pure cmaes
+{
+	generation = 0;
+	list<Node> tmp_node_list;
+	tmp_node_list.clear();
+	for(int i=0; i<mu; i++)
+	{
+		Eigen::VectorXd a(dimension);
+		for(int j=0; j<dimension; j++)
+			a(j) = RANDOM.uniform(lowerbound , upperbound);
+		tmp_node_list.push_back(Node(a));
+	}
+
+	Group my_group = Group(tmp_node_list);
+	CMAES cmaes(mu, lambda, sigma, &my_group);
+	Node best_node = my_group.get_best_node();
+
+	for(int i=0; i<1000; i++)
+	{
+		generation ++;
+		cout << "generation: " << generation << endl;
+		cmaes.run();
+		my_group = *cmaes.group;
+		best_node = my_group.get_best_node();
+		best_node.print();
+	}
+}
+
+else if(false) // my cmaes 
+{
 	// some value used
-	int gen_node_num = 0;
+	int gen_node_num = 0; // used to sum up the node number of current generation
 	double gen_max = -1 * DBL_MAX;
 	double gen_min = DBL_MAX;
 	int sample_each_group = 2;
@@ -181,7 +213,7 @@ int main( int argc, char *argv[] )
 		{
 			cout << "into 1 layer cmaes process" << endl;
 			Layer1CMAESs[UCBmax_id].run();
-			//Layer1Groups[UCBmax_id] = Layer1CMAESs[UCBmax_id].group;
+			Layer1Groups[UCBmax_id] = *Layer1CMAESs[UCBmax_id].group;
 			Layer1VirtualNodes = group_to_virtual_nodes(Layer1CMAESs, Layer1Groups, mu);
 			Group Layer2Group(Layer1VirtualNodes);
 			Layer2CMAES.update_value(Layer2Group);
@@ -237,6 +269,7 @@ int main( int argc, char *argv[] )
 			assert(i == mu);
 		}
 	}
+}
 
 // --------------------------finish iteration-----------------------------
 /*
