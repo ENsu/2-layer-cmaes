@@ -11,6 +11,8 @@ using Eigen::MatrixXd;
 
 extern randomG RANDOM;
 
+#define DEBUG true
+
 CMAES::CMAES(){}
 
 CMAES::CMAES(int mu_ref, int lambda_ref, double sigma_ref, Group *group_ref)
@@ -19,6 +21,7 @@ CMAES::CMAES(int mu_ref, int lambda_ref, double sigma_ref, Group *group_ref)
 	mu = mu_ref;
 	sigma = sigma_ref;
 	lambda = lambda_ref;
+	termination = false;
 
 	//-------init dynamic parameters---------
     pc.setZero(dimension);
@@ -143,6 +146,15 @@ void CMAES::update_value(Group new_group)
 	group = &new_group;
 	Eigen::MatrixXd zi = D.inverse() * B.transpose() * (new_xi - old_xi) / sigma;
 	Eigen::VectorXd z_mean = zi * weight;
+	if(DEBUG)
+	{
+		cout << "D.inverse " << endl << D.inverse() << endl;
+		cout << "B.transpose " << endl << B.transpose() << endl;
+		cout << "(new_xi - old_xi) " << endl << (new_xi - old_xi) << endl;
+		cout << "sigma: " << sigma << endl;
+		cout << "weight: " << endl << weight << endl;
+		cout << "z_mean: " << endl << z_mean << endl;
+	}
 
 	update_ps(z_mean);
 	update_pc(z_mean);
@@ -162,7 +174,11 @@ int CMAES::h_sig()
 
 void CMAES::update_ps(Eigen::VectorXd z_mean)
 {
+	if(DEBUG)
+		cout << "pre ps: " << ps << endl;
     ps = (1.0-cs)*ps + sqrt(cs*(2-cs)*mu_w) * B * z_mean;
+    if(DEBUG)
+    	cout << "post ps: " << ps << endl;
     assert(ps == ps);
     return ;
 }
@@ -170,13 +186,23 @@ void CMAES::update_ps(Eigen::VectorXd z_mean)
 void CMAES::update_pc(Eigen::VectorXd z_mean)
 {
 	int hsig = h_sig();
+	if(DEBUG)
+		cout << "pre pc: " << pc << endl;
     pc = (1.0-cc)*pc + hsig * sqrt(cc*(2-cc)*mu_w) * B * D * z_mean;
+	if(DEBUG)
+		cout << "post pc: " << pc << endl;
     assert(pc == pc);
     return ;
 }
 
 void CMAES::update_covar(Eigen::MatrixXd zi)
 {
+	if(DEBUG)
+	{
+		cout << "pre B: " << endl << B << endl;
+		cout << "pre D: " << endl << D << endl;
+		cout << "pre covar: " << endl << covar << endl; 
+	}
 	int hsig = h_sig();
 	double delta_hsig = (1 - hsig) * cc * (2 - cc);
 	Eigen::MatrixXd yi = B * D * zi;
@@ -185,7 +211,7 @@ void CMAES::update_covar(Eigen::MatrixXd zi)
     assert(covar == covar);
 
     // force covar to be symmetric and positive!!
-    covar = covar.cwiseAbs(); // this line is not used in the demo matlab code!!!
+    // covar = covar.cwiseAbs(); // this line is not used in the demo matlab code!!!
    	Eigen::MatrixXd Covs = Eigen::MatrixXd(covar.triangularView<Eigen::StrictlyUpper>());
 	Eigen::MatrixXd Covd = Eigen::MatrixXd(covar.triangularView<Eigen::Upper>());
 	covar = Covd + Covs.transpose();
@@ -197,9 +223,15 @@ void CMAES::update_covar(Eigen::MatrixXd zi)
 	D = es.eigenvalues().real().cwiseSqrt().asDiagonal();
 	assert(es.eigenvectors().imag().isZero());
 	B = es.eigenvectors().real();
+	if(DEBUG)
+	{
+		cout << "post B: " << endl << B << endl;
+		cout << "post D: " << endl << D << endl;
+		cout << "post covar: " << endl << covar << endl; 
+	}
 	for(int i=0; i<dimension; i++)
 	{
-		assert((covar * B.col(i)).isApprox(eigenvalues(i) * B.col(i)));
+		//assert((covar * B.col(i) - eigenvalues(i) * B.col(i)).isMuchSmallerThan(eigenvalues(i) * B.col(i)));
 		assert(fabs(B.col(i).norm() - 1) < 1E-10);
 	}
 	assert(covar.isApprox(B*D*D*B.inverse()));
@@ -208,8 +240,12 @@ void CMAES::update_covar(Eigen::MatrixXd zi)
 
 void CMAES::update_sigma()
 {
+	if(DEBUG)
+    	cout << "pre sigma: " << sigma << endl;
     double val = exp ( cs / ds	* ((ps.norm() / e_n01 )- 1 ) );
     sigma = sigma * val;
+    if(DEBUG)
+    	cout << "post sigma: " << sigma << endl;
     assert(sigma == sigma);
     return ;
 }

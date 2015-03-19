@@ -17,6 +17,7 @@ class CMAES
 		int mu;
 		int lambda;
 		double sigma;
+		bool termination;
 		CMAES();
 		CMAES(int mu_ref, int lambda_ref, double sigma_ref, Group *group_ref);
 		void init_static_parameters();

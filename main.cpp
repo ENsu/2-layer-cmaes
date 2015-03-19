@@ -216,7 +216,7 @@ else if(false) // my cmaes
 			Layer1Groups[UCBmax_id] = *Layer1CMAESs[UCBmax_id].group;
 			Layer1VirtualNodes = group_to_virtual_nodes(Layer1CMAESs, Layer1Groups, mu);
 			Group Layer2Group(Layer1VirtualNodes);
-			Layer2CMAES.update_value(Layer2Group);
+			Layer2CMAES.update_value(Layer2Group); // this step is terrible
 		}
 		else
 		{
