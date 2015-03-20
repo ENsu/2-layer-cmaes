@@ -59,6 +59,7 @@ void CMAES::init_static_parameters()  // these values won't be changed during cm
     {
     	weight_sum += weight(i);
     }
+    assert(weight_sum-1 < 1E-10);
     int n = dimension;
 	cs = (mu_w + 2) / (n + mu_w + 5);
 	double ds_tmp = sqrt((mu_w - 1)/(n + 1)) - 1;
@@ -166,9 +167,9 @@ void CMAES::run() // run an cma-es iteration
 void CMAES::update_value(Group new_group)
 {
 	Eigen::MatrixXd old_xi = group->node_matrix();
-	assert(old_xi * weight == group->get_mean_node(weight).allele);
+	assert((old_xi * weight).isApprox(group->get_mean_node(weight).allele));
 	Eigen::MatrixXd new_xi = new_group.node_matrix();
-	assert(new_xi * weight == new_group.get_mean_node(weight).allele);
+	assert((new_xi * weight).isApprox(new_group.get_mean_node(weight).allele));
 	Eigen::MatrixXd zi = D.inverse() * B.transpose() * (new_xi - old_xi) / sigma;
 	Eigen::VectorXd z_mean = zi * weight;
 	

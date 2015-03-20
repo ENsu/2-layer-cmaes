@@ -90,8 +90,8 @@ int main( int argc, char *argv[] )
 	int generation = 0;
 
 	// global parameters
-	dimension = 2;
-	funNum = 1;
+	dimension = 10;
+	funNum = 12;
 	double lowerbound = domainlowbound[funNum-1];
 	double upperbound = domainupbound[funNum-1];
 	int lambda = int(4 + 3 * log(dimension));
@@ -218,7 +218,7 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 		//cout << "UCBmax = " << UCBmax << endl;
 		//cout << "UCBmax_id = " << UCBmax_id << endl;
 		//cout << "UCB_global = " << UCB_global << endl;
-		if(false)//(UCBmax > UCB_global)
+		if(UCBmax > UCB_global)
 		{
 			// cout << "into 1 layer cmaes process" << endl;
 			Layer1CMAESs[UCBmax_id].run();
@@ -263,6 +263,7 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 			// select cirtain virtual node
 			newlayer2group->sort_node();
 			newlayer2group->truncate_size(mu);
+
 			// update relative values
 			Layer2CMAES.group = newlayer2group;
 			Layer2CMAES.update_value(*newlayer2group);

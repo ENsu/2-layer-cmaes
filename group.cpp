@@ -125,7 +125,7 @@ Node Group::get_mean_node(Eigen::VectorXd weight)
        weightSum += weight[index];
        index ++;
     }
-    mean->allele = mean->allele / weightSum;
+    //mean->allele = mean->allele / weightSum;
     /*if(mean->outofBound())
     {
         mean->intoBound(); 
