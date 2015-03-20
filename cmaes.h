@@ -18,6 +18,8 @@ class CMAES
 		int lambda;
 		double sigma;
 		bool termination;
+		int termination_count;
+		double best_fitness_val;
 		CMAES();
 		CMAES(int mu_ref, int lambda_ref, double sigma_ref, Group *group_ref);
 		void init_static_parameters();

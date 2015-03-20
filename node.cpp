@@ -73,6 +73,17 @@ bool Node::outofBound()
     return false;
 }
 
+void Node::intoBound()
+{
+	for(int i=0 ; i<dimension; i++)
+	{
+		if(allele(i) > solupbound[funNum-1])
+			allele(i) = solupbound[funNum-1];
+		else if(allele(i) < sollowbound[funNum -1])
+			allele(i) = sollowbound[funNum-1];
+	}
+}
+
 Node& Node::operator=(const Node rhs)
 {
 	if(this == &rhs)

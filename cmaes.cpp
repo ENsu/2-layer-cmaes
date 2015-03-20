@@ -4,6 +4,7 @@
 #include "Eigen/Dense"
 #include "global.h"
 #include "random.hpp" 
+#include <cfloat>
 
 using namespace std;
 using Eigen::VectorXd;
@@ -11,7 +12,7 @@ using Eigen::MatrixXd;
 
 extern randomG RANDOM;
 
-#define DEBUG true
+#define DEBUG false
 
 CMAES::CMAES(){}
 
@@ -21,7 +22,10 @@ CMAES::CMAES(int mu_ref, int lambda_ref, double sigma_ref, Group *group_ref)
 	mu = mu_ref;
 	sigma = sigma_ref;
 	lambda = lambda_ref;
+
 	termination = false;
+	termination_count = 0;
+	best_fitness_val = group->getMin();
 
 	//-------init dynamic parameters---------
     pc.setZero(dimension);
@@ -97,6 +101,30 @@ void CMAES::tune_node_num()
 	assert(group->Nodes.size() == mu);
 }
 
+list<Node> CMAES::sample_node(int node_num)
+{
+	list<Node> new_sample_node;
+	Eigen::VectorXd mean = group->get_mean_node(weight).allele;
+	if(DEBUG)
+	{
+		cout << "-----sampling condition:-----" << endl;
+		cout << "mean: " << mean << endl;
+		cout << "outofBound?? " << (mean(0) - 3.14159265359) << endl;
+		cout << "D: " << D << endl;
+		cout << "sigma: " << sigma << endl;
+	}
+	for(int i=0; i<node_num; i++) //prepare the new (lambda - mu) sample points
+	{	
+		Node tmp(MVNsample(mean));
+		while(tmp.outofBound()) // just resample when node out of boundary
+		{
+			tmp = Node(MVNsample(mean));
+		}
+		new_sample_node.push_back(tmp);
+	}
+	return new_sample_node;
+}
+
 void CMAES::run() // run an cma-es iteration
 {
 	//check group's node number == mu value
@@ -116,23 +144,21 @@ void CMAES::run() // run an cma-es iteration
 	//-----------step 3: update relative variables, pc, ps, C, sigma---------
 	update_value(*new_group);
 	group = new_group;
-	return ;
-}
 
-list<Node> CMAES::sample_node(int node_num)
-{
-	list<Node> new_sample_node;
-	Eigen::VectorXd mean = group->get_mean_node(weight).allele;
-	for(int i=0; i<node_num; i++) //prepare the new (lambda - mu) sample points
-	{	
-		Node tmp(MVNsample(mean));
-		while(tmp.outofBound()) // just resample when node out of boundary
-		{
-			tmp = Node(MVNsample(mean));
-		}
-		new_sample_node.push_back(tmp);
+	//----------step 4: check best fitness improvement------------
+	if(best_fitness_val > group->getMin())
+	{
+		best_fitness_val = group->getMin();
+		termination_count = 0;
 	}
-	return new_sample_node;
+	else
+	{
+		termination_count++;
+		if(termination_count >= (10 + 30 * dimension/lambda))
+			termination=true;
+	}
+
+	return ;
 }
 
 // cmaes can passively receive a new group as sampling result
@@ -140,12 +166,14 @@ list<Node> CMAES::sample_node(int node_num)
 void CMAES::update_value(Group new_group)
 {
 	Eigen::MatrixXd old_xi = group->node_matrix();
-	assert(old_xi * weight == group->get_mean_node(weight).allele);
+	//assert(old_xi * weight == group->get_mean_node(weight).allele);
 	Eigen::MatrixXd new_xi = new_group.node_matrix();
-	assert(new_xi * weight == new_group.get_mean_node(weight).allele);
+	//assert(new_xi * weight == new_group.get_mean_node(weight).allele);
 	group = &new_group;
 	Eigen::MatrixXd zi = D.inverse() * B.transpose() * (new_xi - old_xi) / sigma;
 	Eigen::VectorXd z_mean = zi * weight;
+	
+	double diver_check_old = sigma * D.maxCoeff();
 	if(DEBUG)
 	{
 		cout << "D.inverse " << endl << D.inverse() << endl;
@@ -160,6 +188,12 @@ void CMAES::update_value(Group new_group)
 	update_pc(z_mean);
 	update_covar(zi);
 	update_sigma();
+
+	//-----------------termination criterion-------------
+	double diver_check_new = sigma * D.maxCoeff();
+	if((diver_check_new/diver_check_old) > 1E4)
+		termination = true;
+	//----------------------------------------------------
 }
 
 int CMAES::h_sig()

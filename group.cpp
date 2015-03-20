@@ -1,6 +1,7 @@
 #include "group.h"
 #include "global.h"
 #include <assert.h>
+#include <iostream>
 #include <cfloat>
 #include "random.hpp"
 
@@ -103,6 +104,7 @@ Node Group::get_mean_node()
 	   tmp.allele = tmp.allele + (*iter).allele;
     Node mean;
     mean.allele = tmp.allele / Nodes.size();
+    assert(!mean.outofBound());
     return mean;
 }
 
@@ -114,16 +116,24 @@ Node Group::get_mean_node(Eigen::VectorXd weight)
     int index = 0;
     sort_node();
 
-    Node mean;
+    Node *mean = new Node();
+    mean->allele.setZero();
     list<Node>::iterator iter;
     for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
     {
-       mean.allele = mean.allele + (*iter).allele * weight[index];
+       mean->allele = mean->allele + (*iter).allele * weight[index];
        weightSum += weight[index];
        index ++;
     }
-    assert(fabs(weightSum - 1) < 1E-10);
-    return mean;
+    if(mean->outofBound())
+    {
+        mean->intoBound(); 
+        //這真的是很必不得已的作法，mean有得時候會算錯，然後跑到boundary外面
+        //其實算錯的值都在~1e16，但是因為那時候sigma*D更小，所以就會卡住sample always outof bound
+    }
+    assert(fabs(weightSum - 1) == 0);
+    assert(!mean->outofBound());
+    return (*mean);
 }
 
 Node Group::get_best_node()
@@ -239,7 +249,9 @@ void Group::print()
     list<Node>::iterator iter;
     cout << "========== group nodes: ===========" << endl;
     for(iter = Nodes.begin() ; iter != Nodes.end() ; ++iter)
+    {
         iter->print();
+    }
     cout << "===================================" << endl;
 }
 

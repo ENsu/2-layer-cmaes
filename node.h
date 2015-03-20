@@ -20,6 +20,7 @@ class Node
 		double getFitness();
 		void print();
 		bool outofBound();
+		void intoBound();
 		Node& operator=(const Node rhs);
 };
 

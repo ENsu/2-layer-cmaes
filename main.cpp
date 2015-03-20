@@ -9,6 +9,8 @@
 #include "global.h"
 #include "util.h"
 
+#define CMAES_MODE "CMAES"
+
 using namespace std;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -89,7 +91,7 @@ int main( int argc, char *argv[] )
 
 	// global parameters
 	dimension = 2;
-	funNum = 4;
+	funNum = 12;
 	double lowerbound = domainlowbound[funNum-1];
 	double upperbound = domainupbound[funNum-1];
 	int lambda = int(4 + 3 * log(dimension));
@@ -98,7 +100,7 @@ int main( int argc, char *argv[] )
 	cout << "value of mu: " << mu << endl;
 	double sigma = (upperbound - lowerbound) * 0.3;
 
-if(true) // pure cmaes
+if(CMAES_MODE == "CMAES") // pure cmaes
 {
 	generation = 0;
 	list<Node> tmp_node_list;
@@ -122,11 +124,17 @@ if(true) // pure cmaes
 		cmaes.run();
 		my_group = *cmaes.group;
 		best_node = my_group.get_best_node();
-		best_node.print();
+		cout << "fitness: " << best_node.fitness << endl;
+		//best_node.print();
+		if(cmaes.termination == true)
+		{
+			cout << "ending sigma value: " << cmaes.sigma << endl;
+			break;
+		}
 	}
 }
 
-else if(false) // my cmaes 
+else if(CMAES_MODE == "2LCMAES") // my cmaes 
 {
 	// some value used
 	int gen_node_num = 0; // used to sum up the node number of current generation
