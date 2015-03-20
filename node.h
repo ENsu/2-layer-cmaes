@@ -13,7 +13,7 @@ class Node
 		double fitness;
 		bool isEvaluated;
 		bool isVirtual;
-		int group_id;
+		int group_id; //if its a virtual node, it represent of a group
 
 		Node(VectorXd input_allele);
 		Node();

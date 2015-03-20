@@ -166,10 +166,9 @@ void CMAES::run() // run an cma-es iteration
 void CMAES::update_value(Group new_group)
 {
 	Eigen::MatrixXd old_xi = group->node_matrix();
-	//assert(old_xi * weight == group->get_mean_node(weight).allele);
+	assert(old_xi * weight == group->get_mean_node(weight).allele);
 	Eigen::MatrixXd new_xi = new_group.node_matrix();
-	//assert(new_xi * weight == new_group.get_mean_node(weight).allele);
-	group = &new_group;
+	assert(new_xi * weight == new_group.get_mean_node(weight).allele);
 	Eigen::MatrixXd zi = D.inverse() * B.transpose() * (new_xi - old_xi) / sigma;
 	Eigen::VectorXd z_mean = zi * weight;
 	

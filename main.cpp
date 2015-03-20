@@ -9,7 +9,7 @@
 #include "global.h"
 #include "util.h"
 
-#define CMAES_MODE "CMAES"
+#define CMAES_MODE "2LCMAES"
 
 using namespace std;
 using Eigen::VectorXd;
@@ -20,7 +20,7 @@ extern test_func *testFunc;
 randomG RANDOM;
 
 
-void update_gen_var(Group *groupArry, int arryLen, int& gen_node_num, double& gen_min, double& gen_max)
+void update_gen_var(CMAES *cmaesArry, int arryLen, int& gen_node_num, double& gen_min, double& gen_max)
 {
 	gen_node_num = 0;
 	gen_max = -1 * DBL_MAX;
@@ -28,41 +28,41 @@ void update_gen_var(Group *groupArry, int arryLen, int& gen_node_num, double& ge
 
 	for(int i=0; i<arryLen; i++)
 	{
-		gen_node_num += groupArry[i].getSize();
-		if(gen_max < groupArry[i].getMax())
-			gen_max = groupArry[i].getMax();
-		if(gen_min > groupArry[i].getMin())
-			gen_min = groupArry[i].getMin();
+		gen_node_num += cmaesArry[i].group->getSize();
+		if(gen_max < cmaesArry[i].group->getMax())
+			gen_max = cmaesArry[i].group->getMax();
+		if(gen_min > cmaesArry[i].group->getMin())
+			gen_min = cmaesArry[i].group->getMin();
 	}
 	return;
 }
 
-list<Node> random_sample(Group *groupArry, int arryLen, int each)
+list<Node> random_sample(CMAES *cmaesArry, int arryLen, int each)
 {
 	list<Node> nodeL;
 	for(int i=0; i<arryLen; i++)
 	{
-		list<Node> sampleL = groupArry[i].random_pick(each);
+		list<Node> sampleL = cmaesArry[i].group->random_pick(each);
 		nodeL.insert(nodeL.end(), sampleL.begin(), sampleL.end());
 	}
 	return nodeL;
 }
 
-list<Node> group_to_virtual_nodes(CMAES *cmaesArry, Group *groupArry, int arryLen)
+list<Node> group_to_virtual_nodes(CMAES *cmaesArry, int arryLen)
 {
 	int gen_node_num = 0; 
 	double gen_max = -1 * DBL_MAX;
 	double gen_min = DBL_MAX;
 
 	//update value of gen_node_num, gen_min, gen_max according to the groups
-	update_gen_var(groupArry, arryLen, gen_node_num, gen_min, gen_max);
+	update_gen_var(cmaesArry, arryLen, gen_node_num, gen_min, gen_max);
 
 	list<Node> virtualNodes;
 	for(int i=0; i<arryLen; i++)
 	{
 		//create a virtual node according to the layer 1 group info
-		Node virtual_node = groupArry[i].get_mean_node(cmaesArry[i].weight);
-		virtual_node.fitness = groupArry[i].getUCBVal(gen_node_num, gen_min, gen_max);
+		Node virtual_node = cmaesArry[i].group->get_mean_node(cmaesArry[i].weight);
+		virtual_node.fitness = cmaesArry[i].group->getUCBVal(gen_node_num, gen_min, gen_max);
 		virtual_node.isEvaluated = true;
 		virtual_node.isVirtual = true;
 		virtual_node.group_id = i;  // the arry index of input arrys
@@ -91,7 +91,7 @@ int main( int argc, char *argv[] )
 
 	// global parameters
 	dimension = 2;
-	funNum = 12;
+	funNum = 1;
 	double lowerbound = domainlowbound[funNum-1];
 	double upperbound = domainupbound[funNum-1];
 	int lambda = int(4 + 3 * log(dimension));
@@ -164,7 +164,6 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 
 	// create first layer groups and cmaes and record their UCB value...
 	CMAES *Layer1CMAESs = new CMAES[mu];
-	Group *Layer1Groups = new Group[mu];
 
 	//we convert the VectorXD list into Node list, assign into a group...
 	//binding with a cmaes machine
@@ -175,32 +174,30 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 		list<Eigen::VectorXd>::iterator iter;
 		for(iter = vectorGroup[i].begin() ; iter != vectorGroup[i].end() ; ++iter)
 			tmp_node_list.push_back(Node(*iter));
-		Layer1Groups[i] = Group(tmp_node_list);
-
-		Layer1CMAESs[i] = CMAES(mu, lambda, sigma, &Layer1Groups[i]);
+		Group *layer1group = new Group(tmp_node_list);
+		Layer1CMAESs[i] = CMAES(mu, lambda, sigma, layer1group);
 		Layer1CMAESs[i].tune_node_num();
 		tmp_node_list.clear();
 	}
 	// create a second layer group and cmaes...
-	list<Node> Layer1VirtualNodes = group_to_virtual_nodes(Layer1CMAESs, Layer1Groups, mu);
+	list<Node> Layer1VirtualNodes = group_to_virtual_nodes(Layer1CMAESs, mu);
 
-	Group Layer2Group(Layer1VirtualNodes);
-	CMAES Layer2CMAES(mu, lambda, sigma, &Layer2Group);
+	Group *layer2group = new Group(Layer1VirtualNodes);
+	CMAES Layer2CMAES(mu, lambda, sigma, layer2group);
 
 //-------------------------------atart iteration-----------------------------
 //	while(!termination)
 
-	Group *GroupsPool = new Group[lambda];
 	CMAES *CMAESsPool = new CMAES[lambda];
 
-	for(int k=0; k<2; k++)
+	for(int k=0; k<1000; k++)
 	{
 		//update value of gen_node_num, gen_min, gen_max according to the groups
 
 		// calculate second layer UCB value...
 		// first we random sample # nodes in each group
-		update_gen_var(Layer1Groups, mu, gen_node_num, gen_min, gen_max);
-		list<Node> rSampleNode = random_sample(Layer1Groups, mu, sample_each_group);
+		update_gen_var(Layer1CMAESs, mu, gen_node_num, gen_min, gen_max);
+		list<Node> rSampleNode = random_sample(Layer1CMAESs, mu, sample_each_group);
 		double UCB_global = Group(rSampleNode).getUCBVal(gen_node_num, gen_min, gen_max);
 
 		// find the maximum UCB value among both 1st and 2nd layer...
@@ -208,23 +205,29 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 		int UCBmax_id = 0;
 
 		list<Node>::iterator iter;
-		for(iter = Layer2Group.Nodes.begin(); iter != Layer2Group.Nodes.end(); ++iter)
+		for(iter = Layer2CMAES.group->Nodes.begin(); iter != Layer2CMAES.group->Nodes.end(); ++iter)
+		{
+			assert(iter->isEvaluated == true);
+			assert(iter->isVirtual == true);
 			if(UCBmax < iter->getFitness())
 			{
 				UCBmax = iter->getFitness();
 				UCBmax_id = iter->group_id;
 			}
+		}
 		//cout << "UCBmax = " << UCBmax << endl;
 		//cout << "UCBmax_id = " << UCBmax_id << endl;
 		//cout << "UCB_global = " << UCB_global << endl;
-		if(UCBmax > UCB_global)
+		if(false)//(UCBmax > UCB_global)
 		{
-			cout << "into 1 layer cmaes process" << endl;
+			// cout << "into 1 layer cmaes process" << endl;
 			Layer1CMAESs[UCBmax_id].run();
-			Layer1Groups[UCBmax_id] = *Layer1CMAESs[UCBmax_id].group;
-			Layer1VirtualNodes = group_to_virtual_nodes(Layer1CMAESs, Layer1Groups, mu);
-			Group Layer2Group(Layer1VirtualNodes);
-			Layer2CMAES.update_value(Layer2Group); // this step is terrible
+			if(Layer1CMAESs[UCBmax_id].termination == true)
+				break;
+			Layer1VirtualNodes = group_to_virtual_nodes(Layer1CMAESs, mu);
+			layer2group = new Group(Layer1VirtualNodes);
+			Layer2CMAES.update_value(*layer2group); // this step is terrible
+			Layer2CMAES.group = layer2group;
 		}
 		else
 		{
@@ -233,44 +236,42 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 			// sample (lambda - mu) real nodes according to virtaul nodes
 			list<Node> virtualNodesPool = Layer2CMAES.sample_node(lambda - mu);
 
+			// set pools
 			for(int i=0; i<mu; i++)
 			{
-				GroupsPool[i] = Layer1Groups[i];
 				CMAESsPool[i] = Layer1CMAESs[i];
 			}
-
 			// add new sampled node into group and bind to a new cmaes machine
-			int i = mu+1;
+			int i = mu;
 			list<Node>::iterator iter;
 			for(iter = virtualNodesPool.begin(); iter != virtualNodesPool.end(); ++iter)
 			{
-				list<Node> new_list;
-				new_list.push_back(*iter);
-				GroupsPool[i] = Group(new_list);
-				CMAESsPool[i] = CMAES(mu, lambda, sigma, &GroupsPool[i]);
+				list<Node> new_groups_nodes;
+				new_groups_nodes.push_back(*iter);
+				Group *tmp = new Group(new_groups_nodes);
+				CMAESsPool[i] = CMAES(mu, lambda, sigma, tmp);
 				CMAESsPool[i].tune_node_num();
 				i++;
 			}
 			assert(i == lambda);
 
-			// make virtaul node from these newly sampled node
-			update_gen_var(GroupsPool, mu, gen_node_num, gen_min, gen_max);
-			list<Node> sample_nodes = group_to_virtual_nodes(CMAESsPool, GroupsPool, lambda);
-			Group newLayer2Group = Group(sample_nodes);
+			// make virtaul node from these newly created group
+			update_gen_var(CMAESsPool, mu, gen_node_num, gen_min, gen_max);
+			list<Node> sample_nodes = group_to_virtual_nodes(CMAESsPool, lambda);
+			Group *newlayer2group = new Group(sample_nodes);
 
 			// select cirtain virtual node
-			newLayer2Group.sort_node();
-			newLayer2Group.truncate_size(mu);
-
+			newlayer2group->sort_node();
+			newlayer2group->truncate_size(mu);
 			// update relative values
-			Layer2CMAES.update_value(newLayer2Group);
+			Layer2CMAES.group = newlayer2group;
+			Layer2CMAES.update_value(*newlayer2group);
 
 			// put the layer 2 result back into layer 1 arry.
 			i = 0;
-			for(iter = newLayer2Group.Nodes.begin(); iter != newLayer2Group.Nodes.end(); ++iter)
+			for(iter = newlayer2group->Nodes.begin(); iter != newlayer2group->Nodes.end(); ++iter)
 			{
 				int id = iter->group_id;
-				Layer1Groups[i] = GroupsPool[id];
 				Layer1CMAESs[i] = CMAESsPool[id];
 				i++;
 			}

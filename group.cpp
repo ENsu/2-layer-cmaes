@@ -125,13 +125,14 @@ Node Group::get_mean_node(Eigen::VectorXd weight)
        weightSum += weight[index];
        index ++;
     }
-    if(mean->outofBound())
+    mean->allele = mean->allele / weightSum;
+    /*if(mean->outofBound())
     {
         mean->intoBound(); 
         //這真的是很必不得已的作法，mean有得時候會算錯，然後跑到boundary外面
         //其實算錯的值都在~1e16，但是因為那時候sigma*D更小，所以就會卡住sample always outof bound
-    }
-    assert(fabs(weightSum - 1) == 0);
+    }*/
+    assert(fabs(weightSum - 1) < 1E-10);
     assert(!mean->outofBound());
     return (*mean);
 }
