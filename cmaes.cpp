@@ -58,6 +58,7 @@ void CMAES::init_static_parameters()  // these values won't be changed during cm
     for(int i=0; i<mu; i++)
     {
     	weight_sum += weight(i);
+    	//cout << "weight["<<i<<"]: " << weight(i) << endl; 
     }
     assert(weight_sum-1 < 1E-10);
     int n = dimension;

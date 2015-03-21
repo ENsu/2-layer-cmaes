@@ -140,7 +140,7 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 	int gen_node_num = 0; // used to sum up the node number of current generation
 	double gen_max = -1 * DBL_MAX;
 	double gen_min = DBL_MAX;
-	int sample_each_group = 2;
+	int sample_each_group = 1;
 
 	// initiate the beginning population.
 	Eigen::VectorXd *vectors = new Eigen::VectorXd[mu * mu];
@@ -179,6 +179,7 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 		Layer1CMAESs[i].tune_node_num();
 		tmp_node_list.clear();
 	}
+
 	// create a second layer group and cmaes...
 	list<Node> Layer1VirtualNodes = group_to_virtual_nodes(Layer1CMAESs, mu);
 
@@ -215,60 +216,57 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 				UCBmax_id = iter->group_id;
 			}
 		}
-		//cout << "UCBmax = " << UCBmax << endl;
-		//cout << "UCBmax_id = " << UCBmax_id << endl;
-		//cout << "UCB_global = " << UCB_global << endl;
+
+
 		if(UCBmax > UCB_global)
 		{
 			// cout << "into 1 layer cmaes process" << endl;
 			Layer1CMAESs[UCBmax_id].run();
 			if(Layer1CMAESs[UCBmax_id].termination == true)
 				break;
+		}
+		else //(UCBmax < UCB_global)
+		{
+			cout << "into 2 layer cmaes process" << endl;
+			
+			//------- update 2nd layer cmaes parameter due to changes make in 1layer cmaes
 			Layer1VirtualNodes = group_to_virtual_nodes(Layer1CMAESs, mu);
 			layer2group = new Group(Layer1VirtualNodes);
 			Layer2CMAES.update_value(*layer2group); // this step is terrible
 			Layer2CMAES.group = layer2group;
-		}
-		else
-		{
-			cout << "into 2 layer cmaes process" << endl;
+			
 			// layer 2 cmaes run...
-			// sample (lambda - mu) real nodes according to virtaul nodes
+			// sample (lambda - mu) real nodes according to the 2nd layer virtaul nodes
+			// these new nodes are used to create new groups
 			list<Node> virtualNodesPool = Layer2CMAES.sample_node(lambda - mu);
 
-			// set pools
+			// add old and new groups in pools.
 			for(int i=0; i<mu; i++)
 			{
 				CMAESsPool[i] = Layer1CMAESs[i];
 			}
-			// add new sampled node into group and bind to a new cmaes machine
 			int i = mu;
 			list<Node>::iterator iter;
 			for(iter = virtualNodesPool.begin(); iter != virtualNodesPool.end(); ++iter)
 			{
 				list<Node> new_groups_nodes;
-				new_groups_nodes.push_back(*iter);
+				new_groups_nodes.push_back(*iter); //each new group has only one node at this time
 				Group *tmp = new Group(new_groups_nodes);
 				CMAESsPool[i] = CMAES(mu, lambda, sigma, tmp);
-				CMAESsPool[i].tune_node_num();
+				CMAESsPool[i].tune_node_num(); // each new group now has mu nodes
 				i++;
 			}
 			assert(i == lambda);
-
+		
 			// make virtaul node from these newly created group
-			update_gen_var(CMAESsPool, mu, gen_node_num, gen_min, gen_max);
 			list<Node> sample_nodes = group_to_virtual_nodes(CMAESsPool, lambda);
 			Group *newlayer2group = new Group(sample_nodes);
 
-			// select cirtain virtual node
-			newlayer2group->sort_node();
+			// select the groups we want to hold
+			newlayer2group->sort_node_descend();  //sort by UCB value, the bigger the better
 			newlayer2group->truncate_size(mu);
-
-			// update relative values
-			Layer2CMAES.group = newlayer2group;
-			Layer2CMAES.update_value(*newlayer2group);
-
-			// put the layer 2 result back into layer 1 arry.
+	
+			// put the selected groups back into layer 1 arry.
 			i = 0;
 			for(iter = newlayer2group->Nodes.begin(); iter != newlayer2group->Nodes.end(); ++iter)
 			{
@@ -277,6 +275,10 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 				i++;
 			}
 			assert(i == mu);
+
+			// update groups to cmaes
+			//Layer2CMAES.update_value(*newlayer2group); 
+			//Layer2CMAES.group = newlayer2group;
 		}
 	}
 }

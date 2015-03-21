@@ -226,6 +226,16 @@ void Group::sort_node()
     Nodes.sort(compare_node);
 }
 
+bool compare_node_descend (Node& first, Node& second)
+{
+  return ( second.getFitness() < first.getFitness() );
+}
+
+void Group::sort_node_descend()
+{
+    Nodes.sort(compare_node_descend);
+}
+
 list<Node> Group::random_pick(int pick_num)
 {
     if(pick_num > Nodes.size())

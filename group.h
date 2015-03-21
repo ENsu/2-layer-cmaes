@@ -38,6 +38,7 @@ class Group
 
 		void truncate_size(int size);
 		void sort_node();
+		void sort_node_descend();
 		list<Node> random_pick(int pick_num);
 		void print();
 
