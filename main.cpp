@@ -9,7 +9,7 @@
 #include "global.h"
 #include "util.h"
 
-#define CMAES_MODE "2LCMAES"
+#define CMAES_MODE "2LCMAES"  // CMAES: run pure cmaes, 2LCMAES: run our experiment
 
 using namespace std;
 using Eigen::VectorXd;
@@ -229,16 +229,16 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 		{
 			cout << "into 2 layer cmaes process" << endl;
 			
-			//------- update 2nd layer cmaes parameter due to changes make in 1layer cmaes
+			//------- update 2nd layer cmaes parameter
 			Layer1VirtualNodes = group_to_virtual_nodes(Layer1CMAESs, mu);
 			layer2group = new Group(Layer1VirtualNodes);
-			Layer2CMAES.update_value(*layer2group); // this step is terrible
+			Layer2CMAES.update_value(*layer2group); // update cmaes parameters
 			Layer2CMAES.group = layer2group;
 			
 			// layer 2 cmaes run...
 			// sample (lambda - mu) real nodes according to the 2nd layer virtaul nodes
 			// these new nodes are used to create new groups
-			list<Node> virtualNodesPool = Layer2CMAES.sample_node(lambda - mu);
+			list<Node> newGroupCandidate = Layer2CMAES.sample_node(lambda - mu);
 
 			// add old and new groups in pools.
 			for(int i=0; i<mu; i++)
@@ -247,28 +247,28 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 			}
 			int i = mu;
 			list<Node>::iterator iter;
-			for(iter = virtualNodesPool.begin(); iter != virtualNodesPool.end(); ++iter)
+			for(iter = newGroupCandidate.begin(); iter != newGroupCandidate.end(); ++iter)
 			{
-				list<Node> new_groups_nodes;
-				new_groups_nodes.push_back(*iter); //each new group has only one node at this time
-				Group *tmp = new Group(new_groups_nodes);
-				CMAESsPool[i] = CMAES(mu, lambda, sigma, tmp);
-				CMAESsPool[i].tune_node_num(); // each new group now has mu nodes
+				list<Node> candidate_groups_nodes;
+				candidate_groups_nodes.push_back(*iter); //each new group begins with only one node
+				Group *candidate_group = new Group(candidate_groups_nodes);
+				CMAESsPool[i] = CMAES(mu, lambda, sigma, candidate_group);
+				CMAESsPool[i].tune_node_num(); // each new candidate group now has mu nodes
 				i++;
 			}
 			assert(i == lambda);
 		
 			// make virtaul node from these newly created group
-			list<Node> sample_nodes = group_to_virtual_nodes(CMAESsPool, lambda);
-			Group *newlayer2group = new Group(sample_nodes);
+			list<Node> allGroupCandidate = group_to_virtual_nodes(CMAESsPool, lambda);
+			Group *layer2group = new Group(allGroupCandidate);
 
 			// select the groups we want to hold
-			newlayer2group->sort_node_descend();  //sort by UCB value, the bigger the better
-			newlayer2group->truncate_size(mu);
+			layer2group->sort_node_descend();  //sort by UCB value, the bigger the better
+			layer2group->truncate_size(mu);
 	
 			// put the selected groups back into layer 1 arry.
 			i = 0;
-			for(iter = newlayer2group->Nodes.begin(); iter != newlayer2group->Nodes.end(); ++iter)
+			for(iter = layer2group->Nodes.begin(); iter != layer2group->Nodes.end(); ++iter)
 			{
 				int id = iter->group_id;
 				Layer1CMAESs[i] = CMAESsPool[id];
@@ -283,6 +283,10 @@ else if(CMAES_MODE == "2LCMAES") // my cmaes
 	}
 }
 
+else
+{
+	cout << "no such mode" << endl;
+}
 // --------------------------finish iteration-----------------------------
 /*
 	Group my_group = Group(tmp_node_list);
